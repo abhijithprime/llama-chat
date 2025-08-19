@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
+import com.prime.llamachat.database.ObjectBox
 import com.prime.llamachat.ui.theme.LLAMACHATTheme
 import java.io.File
 import kotlin.getValue
@@ -63,6 +64,8 @@ class MainActivity(
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        ObjectBox.init(this)
 
         StrictMode.setVmPolicy(
             VmPolicy.Builder(StrictMode.getVmPolicy())
