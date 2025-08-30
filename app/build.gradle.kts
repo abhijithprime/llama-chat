@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -63,6 +64,11 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    releaseImplementation(libs.objectbox.android)
+    debugImplementation(libs.objectbox.android.objectbrowser)
+    implementation(libs.tensorflow.lite)
+    implementation(libs.tasks.text) // For easier tokenization & text handling
+    implementation(libs.kotlinx.serialization.json)
 }
 
 apply(plugin = "io.objectbox")

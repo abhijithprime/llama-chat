@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
@@ -55,6 +56,8 @@ class MainActivity(
 
     private val viewModel: MainViewModel by viewModels()
 
+    private lateinit var embedder: BertEmbedder
+
     // Get a MemoryInfo object for the device's current memory status.
     private fun availableMemory(): ActivityManager.MemoryInfo {
         return ActivityManager.MemoryInfo().also { memoryInfo ->
@@ -66,6 +69,8 @@ class MainActivity(
         super.onCreate(savedInstanceState)
 
         ObjectBox.init(this)
+
+        embedder = BertEmbedder(this)
 
         StrictMode.setVmPolicy(
             VmPolicy.Builder(StrictMode.getVmPolicy())
@@ -81,6 +86,7 @@ class MainActivity(
 
         val extFilesDir = getExternalFilesDir(null)
         val modelPath = File(extFilesDir, "llama-160m-chat-v1.q8_0.gguf").absolutePath
+        val embeddingPath = File(extFilesDir, "embeddings.json").absolutePath
 
         enableEdgeToEdge()
         setContent {
@@ -93,7 +99,11 @@ class MainActivity(
                         viewModel,
                         clipboardManager,
                         modelPath,
-                        Modifier.padding(innerPadding).background(color = MaterialTheme.colorScheme.surfaceBright)
+                        Modifier
+                            .padding(innerPadding)
+                            .background(color = MaterialTheme.colorScheme.surfaceBright),
+                        embedder,
+                        embeddingPath
                     )
                 }
             }
@@ -144,7 +154,8 @@ fun ChatBox(
                     bottomStart = CornerSize(10.dp)
                 )
             )
-            .padding(16.dp).background(
+            .padding(16.dp)
+            .background(
                 color = Color(0xFFD35454) // Light gray background
             )
 
@@ -164,7 +175,9 @@ fun ChatScreenPreview() {
             viewModel = MainViewModel(),
             clipboard = LocalClipboardManager.current as ClipboardManager,
             modelPath = "path/to/model",
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize(),
+            embedder = BertEmbedder(LocalContext.current),
+            embeddingPath = ""
         )
     }
 }
@@ -175,7 +188,10 @@ fun ChatScreen(
     clipboard: ClipboardManager,
     modelPath: String,
     modifier: Modifier,
+    embedder: BertEmbedder,
+    embeddingPath: String,
 ) {
+    val context = LocalContext.current
     Column(modifier = modifier) {
         val scrollState = rememberLazyListState()
 
@@ -193,12 +209,19 @@ fun ChatScreen(
 
         OutlinedTextField(
             value = viewModel.message,
-            onValueChange = { viewModel.updateMessage(it) },
+            onValueChange = {
+                viewModel.updateMessage(it)
+            },
             label = { Text("Message") },
         )
         Row {
-            Button({ viewModel.send() }) { Text("Send") }
-            Button({ viewModel.benchmark(8, 4, 1) }) { Text("Bench") }
+            Button({
+//                viewModel.send()
+                embedder.saveQuestion(viewModel.message)
+                viewModel.updateMessage("")
+            }) { Text("Send") }
+//            Button({ viewModel.benchmark(8, 4, 1) }) { Text("Bench") }
+            Button({ embedder.importFromJson(embeddingPath) }) { Text("Import") }
             Button({ viewModel.load(modelPath) }) { Text("Load") }
             Button({
                 viewModel.messages.joinToString("\n").let {
