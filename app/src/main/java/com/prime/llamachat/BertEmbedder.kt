@@ -2,9 +2,6 @@ package com.prime.llamachat
 
 import android.content.Context
 import android.util.Log
-import com.google.common.reflect.TypeToken
-import com.google.mediapipe.tasks.components.containers.Embedding
-
 import com.google.mediapipe.tasks.text.textembedder.TextEmbedder
 import com.prime.llamachat.database.ObjectBox
 import com.prime.llamachat.database.entities.DocChunkEntity
@@ -13,10 +10,8 @@ import com.prime.llamachat.database.entities.QuestionsEntity
 import io.objectbox.Box
 import io.objectbox.kotlin.boxFor
 import kotlinx.serialization.builtins.ListSerializer
-import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.io.File
-import java.util.PriorityQueue
 import kotlin.math.sqrt
 
 class BertEmbedder(context: Context) {
@@ -30,21 +25,17 @@ class BertEmbedder(context: Context) {
     private fun getEmbedding(text: String): FloatArray {
         val result = embedder.embed(text)
         val embedding: FloatArray = result.embeddingResult().embeddings()[0].floatEmbedding()
-//        return embedding
         // L2 normalize on mobile
         val norm = sqrt(embedding.map { it * it }.sum().toDouble())
         return embedding.map { (it / norm).toFloat() }.toFloatArray()
     }
 
     // Save question with its embedding
-    fun saveQuestion(text: String) {
+    fun saveAndGetEmbedding(text: String) : FloatArray {
         val embedding = getEmbedding(text)
         val question = QuestionsEntity(text = text, embedding = embedding)
         questionBox.put(question)
-        val similar = searchSimilarEmbeddings(embedding)
-        for (s in similar) {
-            Log.i("BertEmbedder", "similar chunk: ${s.chunkText}")
-        }
+        return embedding
     }
 
     // Compute cosine similarity between two vectors (optimized)
@@ -103,17 +94,38 @@ class BertEmbedder(context: Context) {
 
     fun searchSimilarEmbeddings(
         queryEmbedding: FloatArray,
-        topK: Int = 5
+        topK: Int = 2
     ): List<DocChunkEntity> {
         val query =
             documentBox.query().nearestNeighbors(DocChunkEntity_.embedding, queryEmbedding, topK)
                 .build()
         val results = query.find()
         val scores = query.findIdsWithScores()
-        for(result in scores) {
+        for (result in scores) {
             Log.i("BertEmbedder", "Found id: ${result.id} with score: ${result.score}")
         }
         return results
+    }
+
+    fun preparePrompt(text: String, embedding: FloatArray): String {
+        // Search for similar embeddings in the DB
+        val similar = searchSimilarEmbeddings(embedding, 2)
+        for (s in similar) {
+            Log.i("BertEmbedder", "similar chunk: ${s.chunkText}")
+        }
+        // Generate Prompt from the retrieved chunks
+        Log.i("BertEmbedder", "Saved question: $text with embedding size: ${embedding.size}")
+        val prompt = """
+            INSTRUCTIONS: Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer and tell the user to contact the ACKCIO team for further assistance.
+            If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context.
+            
+            CONTEXT:
+            ${similar.joinToString("\n") { it.chunkText }}
+            
+            QUESTION:
+            $text
+        """.trimIndent()
+        return prompt
     }
 
     fun importFromJson(jsonPath: String) {

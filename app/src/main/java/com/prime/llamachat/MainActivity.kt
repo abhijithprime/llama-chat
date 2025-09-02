@@ -40,7 +40,6 @@ import com.prime.llamachat.database.ObjectBox
 import com.prime.llamachat.ui.theme.LLAMACHATTheme
 import java.io.File
 import kotlin.getValue
-import kotlin.text.clear
 
 class MainActivity(
     activityManager: ActivityManager? = null,
@@ -216,9 +215,10 @@ fun ChatScreen(
         )
         Row {
             Button({
-//                viewModel.send()
-                embedder.saveQuestion(viewModel.message)
-                viewModel.updateMessage("")
+                val embedding = embedder.saveAndGetEmbedding(viewModel.message)
+                val prompt = embedder.preparePrompt(viewModel.message, embedding)
+                viewModel.updateMessage(prompt)
+                viewModel.send()
             }) { Text("Send") }
 //            Button({ viewModel.benchmark(8, 4, 1) }) { Text("Bench") }
             Button({ embedder.importFromJson(embeddingPath) }) { Text("Import") }

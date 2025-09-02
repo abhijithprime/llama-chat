@@ -70,6 +70,7 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
                 }
                 .collect { messages = messages.dropLast(1) + (messages.last() + it) }
         }
+        Log.i(tag, "Received ${messages.last()}")
     }
 
     // Function to benchmark the LLamaAndroid instance
@@ -113,6 +114,7 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
     fun load(pathToModel: String) {
         viewModelScope.launch {
             try {
+
                 llamaAndroid.load(pathToModel)
                 messages += "Loaded $pathToModel"
             } catch (exc: IllegalStateException) {
