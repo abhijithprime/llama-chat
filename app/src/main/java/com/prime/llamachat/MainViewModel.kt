@@ -56,14 +56,16 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
     // the messages list
     fun send() {
         val text = message
+        Log.d("LLAMACPP", "Sending $text")
         message = ""
 
         // Add to messages console.
         messages += text
         messages += ""
 
+
         viewModelScope.launch {
-            llamaAndroid.send(text)
+            llamaAndroid.send(text, true)
                 .catch {
                     Log.e(tag, "send() failed", it)
                     messages += it.message!!

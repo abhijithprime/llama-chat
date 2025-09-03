@@ -29,6 +29,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.getSystemService
 import com.prime.llamachat.database.ObjectBox
 import com.prime.llamachat.ui.theme.LLAMACHATTheme
+import kotlinx.coroutines.launch
 import java.io.File
 import kotlin.getValue
 
@@ -84,7 +86,7 @@ class MainActivity(
         viewModel.log("Downloads directory: ${getExternalFilesDir(null)}")
 
         val extFilesDir = getExternalFilesDir(null)
-        val modelPath = File(extFilesDir, "llama-160m-chat-v1.q8_0.gguf").absolutePath
+        val modelPath = File(extFilesDir, "Llama-3.2-1B-Instruct-Q4_K_S.gguf").absolutePath
         val embeddingPath = File(extFilesDir, "embeddings.json").absolutePath
 
         enableEdgeToEdge()
@@ -190,7 +192,7 @@ fun ChatScreen(
     embedder: BertEmbedder,
     embeddingPath: String,
 ) {
-    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     Column(modifier = modifier) {
         val scrollState = rememberLazyListState()
 
@@ -215,10 +217,15 @@ fun ChatScreen(
         )
         Row {
             Button({
-                val embedding = embedder.saveAndGetEmbedding(viewModel.message)
-                val prompt = embedder.preparePrompt(viewModel.message, embedding)
-                viewModel.updateMessage(prompt)
-                viewModel.send()
+                scope.launch {
+                    val embedding = embedder.saveAndGetEmbedding(viewModel.message)
+                    // Prepare the prompt using the original message and embedding
+                    val preparedPrompt = embedder.preparePrompt(viewModel.message, embedding)
+                    // Update the ViewModel's message with the prepared prompt
+                    viewModel.updateMessage(preparedPrompt)
+                    // Send the prepared prompt to the model
+                    viewModel.send()
+                }
             }) { Text("Send") }
 //            Button({ viewModel.benchmark(8, 4, 1) }) { Text("Bench") }
             Button({ embedder.importFromJson(embeddingPath) }) { Text("Import") }
