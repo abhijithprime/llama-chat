@@ -13,15 +13,21 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -30,8 +36,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
@@ -184,6 +192,65 @@ fun ChatScreenPreview() {
 }
 
 @Composable
+fun ChatMessageBubble(message: String, isUserMessage: Boolean) {
+    val bubbleShape: Shape = RoundedCornerShape(
+        topStart = 16.dp,
+        topEnd = 16.dp,
+        bottomStart = if (isUserMessage) 16.dp else 0.dp,
+        bottomEnd = if (isUserMessage) 0.dp else 16.dp
+    )
+
+    val backgroundColor = if (isUserMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val textColor = if (isUserMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        contentAlignment = if (isUserMessage) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Box(
+            modifier = Modifier
+                .background(backgroundColor, shape = bubbleShape)
+                .padding(12.dp)
+        ) {
+            Text(
+                text = message,
+                color = textColor,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Preview
+@Composable
+fun ChatMessageBubblePreview() {
+    LLAMACHATTheme {
+        Column {
+            ChatMessageBubble(message = "Hello, this is a user message.", isUserMessage = true)
+            ChatMessageBubble(message = "Hello, this is a response from the AI.", isUserMessage = false)
+        }
+    }
+}
+
+private fun extractUserMessage(prompt: String): String {
+    val userHeader = "user<|end_header_id|>\n\n"
+    val contextHeader = "\n\nContext information is below."
+    val startIndex = prompt.indexOf(userHeader)
+    if (startIndex == -1) return prompt
+
+    val messageStartIndex = startIndex + userHeader.length
+    val endIndex = prompt.indexOf(contextHeader, startIndex = messageStartIndex)
+
+    return if (endIndex != -1) {
+        prompt.substring(messageStartIndex, endIndex)
+    } else {
+        prompt // fallback
+    }
+}
+
+@Composable
 fun ChatScreen(
     viewModel: MainViewModel,
     clipboard: ClipboardManager,
@@ -193,41 +260,65 @@ fun ChatScreen(
     embeddingPath: String,
 ) {
     val scope = rememberCoroutineScope()
-    Column(modifier = modifier) {
+    Column(modifier = modifier.padding(16.dp)) {
         val scrollState = rememberLazyListState()
 
-        Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(state = scrollState) {
-                items(viewModel.messages) {
-                    Text(
-                        it,
-                        style = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
-                        modifier = Modifier.padding(16.dp)
-                    )
+        // Messages area
+        LazyColumn(
+            state = scrollState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(vertical = 8.dp)
+        ) {
+            itemsIndexed(viewModel.messages) { index, message ->
+                val isUserMessage = index % 2 == 0
+                val displayMessage = if (isUserMessage) {
+                    extractUserMessage(message)
+                } else {
+                    message
                 }
+                ChatMessageBubble(message = displayMessage, isUserMessage = isUserMessage)
             }
         }
 
-        OutlinedTextField(
-            value = viewModel.message,
-            onValueChange = {
-                viewModel.updateMessage(it)
-            },
-            label = { Text("Message") },
-        )
-        Row {
-            Button({
-                scope.launch {
-                    val embedding = embedder.saveAndGetEmbedding(viewModel.message)
-                    // Prepare the prompt using the original message and embedding
-                    val preparedPrompt = embedder.preparePrompt(viewModel.message, embedding)
-                    // Update the ViewModel's message with the prepared prompt
-                    viewModel.updateMessage(preparedPrompt)
-                    // Send the prepared prompt to the model
-                    viewModel.send()
+        // Input area
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            OutlinedTextField(
+                value = viewModel.message,
+                onValueChange = { viewModel.updateMessage(it) },
+                label = { Text("Message") },
+                modifier = Modifier.weight(1f)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(onClick = {
+                if (viewModel.message.isNotBlank()) {
+                    scope.launch {
+                        val userMessage = viewModel.message
+                        viewModel.updateMessage("") // Clear input field immediately
+                        val embedding = embedder.saveAndGetEmbedding(userMessage)
+                        val preparedPrompt = embedder.preparePrompt(userMessage, embedding)
+                        viewModel.updateMessage(preparedPrompt)
+                        viewModel.send()
+                    }
                 }
-            }) { Text("Send") }
-//            Button({ viewModel.benchmark(8, 4, 1) }) { Text("Bench") }
+            }) {
+                Text("Send")
+            }
+        }
+
+        // Utility buttons
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly
+        ) {
             Button({ embedder.importFromJson(embeddingPath) }) { Text("Import") }
             Button({ viewModel.load(modelPath) }) { Text("Load") }
             Button({
