@@ -24,7 +24,7 @@ android {
                 arguments += "-DGGML_OPENMP=OFF"
                 arguments += "-DLLAMA_BUILD_COMMON=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
-                arguments += "-DCMAKE_BUILD_TYPE=Debug"
+                arguments += "-DCMAKE_BUILD_TYPE=Release"
 
                 // ✅ Enable GPU (OpenCL / Adreno)
 //                arguments += "-DGGML_OPENCL=ON"
@@ -32,10 +32,12 @@ android {
 //                arguments += "-DGGML_OPENCL_USE_ADRENO_KERNELS=ON"
 
                 // (Optional) try Vulkan if you want to experiment
-                arguments += "-DGGML_VULKAN=ON"
-                arguments += "-DGGML_DEBUG=ON"  // Enable verbose Vulkan logs for diagnostics
+//                arguments += "-DGGML_VULKAN=ON"
+//                arguments += "-DGGML_VULKAN_CHECK_RESULTS=OFF"  // Skip costly checks
+//                arguments += "-DGGML_VULKAN_VALIDATE=OFF"  // Disable validation layers
+//                arguments += "-DGGML_VULKAN_DEBUG=OFF"  // Reduce logging overhead
                 // Add this to include the Vulkan headers (including vulkan.hpp)
-                arguments += "-DCMAKE_CXX_FLAGS=-I/Users/gokulakrishnanv/VulkanSDK/1.4.321.0/macOS/include"
+//                arguments += "-DCMAKE_CXX_FLAGS=-I/Users/gokulakrishnanv/VulkanSDK/1.4.321.0/macOS/include"
 
                 cppFlags += listOf()
                 arguments += listOf()
