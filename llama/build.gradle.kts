@@ -14,16 +14,32 @@ android {
         consumerProguardFiles("consumer-rules.pro")
         ndk {
             // Add NDK properties if wanted, e.g.
-            // abiFilters += listOf("arm64-v8a")
+             //noinspection ChromeOsAbiSupport
+             abiFilters += listOf("arm64-v8a")
         }
         externalNativeBuild {
             cmake {
+                arguments += "-DCMAKE_VERBOSE_MAKEFILE=ON"
                 arguments += "-DLLAMA_CURL=OFF"
+                arguments += "-DGGML_OPENMP=OFF"
                 arguments += "-DLLAMA_BUILD_COMMON=ON"
                 arguments += "-DGGML_LLAMAFILE=OFF"
-                arguments += "-DCMAKE_BUILD_TYPE=Release"
+                arguments += "-DCMAKE_BUILD_TYPE=Debug"
+
+                // ✅ Enable GPU (OpenCL / Adreno)
+//                arguments += "-DGGML_OPENCL=ON"
+//                arguments += "-DGGML_OPENCL_EMBED_KERNELS=ON"
+//                arguments += "-DGGML_OPENCL_USE_ADRENO_KERNELS=ON"
+
+                // (Optional) try Vulkan if you want to experiment
+                arguments += "-DGGML_VULKAN=ON"
+                arguments += "-DGGML_DEBUG=ON"  // Enable verbose Vulkan logs for diagnostics
+                // Add this to include the Vulkan headers (including vulkan.hpp)
+                arguments += "-DCMAKE_CXX_FLAGS=-I/Users/gokulakrishnanv/VulkanSDK/1.4.321.0/macOS/include"
+
                 cppFlags += listOf()
                 arguments += listOf()
+
 
                 cppFlags("")
             }
@@ -61,10 +77,10 @@ android {
 }
 
 dependencies {
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    implementation("com.google.android.material:material:1.11.0")
+    implementation("androidx.core:core-ktx:1.17.0")
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("com.google.android.material:material:1.13.0")
     testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
+    androidTestImplementation("androidx.test.espresso:espresso-core:3.7.0")
 }

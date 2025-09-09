@@ -14,7 +14,7 @@ data class DocChunkEntity(
     var chunkText: String,
     @HnswIndex(
         384,
-        distanceType = VectorDistanceType.DEFAULT,
+        distanceType = VectorDistanceType.COSINE,
         indexingSearchCount = 300,
     ) var embedding: FloatArray // Use ByteArray for embeddings
 ) {

@@ -54,13 +54,14 @@ class MainViewModel(private val llamaAndroid: LLamaAndroid = LLamaAndroid.instan
     // It then launches a coroutine to send the message and handle the response
     // If an error occurs during sending, it catches the exception and adds the error message to
     // the messages list
-    fun send() {
-        val text = message
+    fun send(prompt:String) {
+        val text = prompt
+        val userQuery  = message
         Log.d("LLAMACPP", "Sending $text")
         message = ""
 
         // Add to messages console.
-        messages += text
+        messages += userQuery
         messages += ""
 
 

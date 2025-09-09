@@ -1,7 +1,6 @@
 package com.prime.llamachat
 
 import android.app.ActivityManager
-import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
 import android.os.StrictMode
@@ -49,7 +48,6 @@ import com.prime.llamachat.database.ObjectBox
 import com.prime.llamachat.ui.theme.LLAMACHATTheme
 import kotlinx.coroutines.launch
 import java.io.File
-import kotlin.getValue
 
 class MainActivity(
     activityManager: ActivityManager? = null,
@@ -94,7 +92,10 @@ class MainActivity(
         viewModel.log("Downloads directory: ${getExternalFilesDir(null)}")
 
         val extFilesDir = getExternalFilesDir(null)
-        val modelPath = File(extFilesDir, "Llama-3.2-1B-Instruct-Q4_K_S.gguf").absolutePath
+//        val modelName = "llama-160m-chat-v1.q8_0.gguf" // 160M Model
+        val modelName = "Llama-3.2-1B-Instruct-Q4_K_S.gguf" // 1B Model
+//        val modelName = "tinymistral-248m-alpaca.q4_k_m.gguf"
+        val modelPath = File(extFilesDir, modelName).absolutePath
         val embeddingPath = File(extFilesDir, "embeddings.json").absolutePath
 
         enableEdgeToEdge()
@@ -200,8 +201,10 @@ fun ChatMessageBubble(message: String, isUserMessage: Boolean) {
         bottomEnd = if (isUserMessage) 0.dp else 16.dp
     )
 
-    val backgroundColor = if (isUserMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
-    val textColor = if (isUserMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
+    val backgroundColor =
+        if (isUserMessage) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.secondaryContainer
+    val textColor =
+        if (isUserMessage) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSecondaryContainer
 
     Box(
         modifier = Modifier
@@ -229,7 +232,10 @@ fun ChatMessageBubblePreview() {
     LLAMACHATTheme {
         Column {
             ChatMessageBubble(message = "Hello, this is a user message.", isUserMessage = true)
-            ChatMessageBubble(message = "Hello, this is a response from the AI.", isUserMessage = false)
+            ChatMessageBubble(
+                message = "Hello, this is a response from the AI.",
+                isUserMessage = false
+            )
         }
     }
 }
@@ -300,11 +306,11 @@ fun ChatScreen(
                 if (viewModel.message.isNotBlank()) {
                     scope.launch {
                         val userMessage = viewModel.message
-                        viewModel.updateMessage("") // Clear input field immediately
                         val embedding = embedder.saveAndGetEmbedding(userMessage)
                         val preparedPrompt = embedder.preparePrompt(userMessage, embedding)
-                        viewModel.updateMessage(preparedPrompt)
-                        viewModel.send()
+                        viewModel.updateMessage(viewModel.message)
+                        viewModel.send(preparedPrompt)
+                        viewModel.updateMessage("") // Clear input field immediately
                     }
                 }
             }) {
@@ -322,10 +328,8 @@ fun ChatScreen(
             Button({ embedder.importFromJson(embeddingPath) }) { Text("Import") }
             Button({ viewModel.load(modelPath) }) { Text("Load") }
             Button({
-                viewModel.messages.joinToString("\n").let {
-                    clipboard.setPrimaryClip(ClipData.newPlainText("", it))
-                }
-            }) { Text("Copy") }
+                viewModel.benchmark(pp = 512, tg = 128, pl = 1, nr = 3)
+            }) { Text("Bench") }
         }
     }
 }
